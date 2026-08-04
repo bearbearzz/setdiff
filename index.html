@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>欄位比對工具</title>
+<style>
+:root{
+  --paper:#F4F6F4; --card:#FFFFFF; --ink:#16191A; --muted:#63696B; --faint:#8D9391;
+  --rule:#DEE3E0; --rule-strong:#C3CAC6;
+  --diff:#A8342A; --diff-bg:#F7E9E7;
+  --ok:#2C6E4A; --ok-bg:#E6F0E9;
+  --warn:#8A6109; --warn-bg:#F6EDD8;
+  --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,"Noto Sans Mono",monospace;
+  --sans:"PingFang TC","Microsoft JhengHei","Noto Sans TC","Hiragino Sans",-apple-system,"Segoe UI",sans-serif;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#16191A; --card:#1E2223; --ink:#E8EBE9; --muted:#9BA2A0; --faint:#7A817F;
+    --rule:#2E3435; --rule-strong:#414849;
+    --diff:#E4837A; --diff-bg:#33211F;
+    --ok:#7FBF9B; --ok-bg:#1B2A22;
+    --warn:#D7AC55; --warn-bg:#2C2416;
+  }
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+
+header{border-bottom:1px solid var(--rule-strong);padding-bottom:14px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+h1{font-size:19px;font-weight:600;margin:0;letter-spacing:.02em}
+header p{margin:0;font-size:13px;color:var(--muted)}
+
+.panes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.pane label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-size:13px;font-weight:600}
+.pane .n{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
+textarea{width:100%;min-height:170px;padding:10px 12px;border:1px solid var(--rule-strong);border-radius:4px;background:var(--card);color:var(--ink);font-family:var(--mono);font-size:12.5px;line-height:1.55;resize:vertical}
+textarea::placeholder{color:var(--faint)}
+textarea:focus-visible,select:focus-visible,button:focus-visible{outline:2px solid var(--ink);outline-offset:1px}
+
+.controls{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:12px 0;border-top:1px solid var(--rule);border-bottom:1px solid var(--rule);margin-bottom:20px}
+select{font-family:var(--sans);font-size:13.5px;padding:6px 10px;border:1px solid var(--rule-strong);border-radius:4px;background:var(--card);color:var(--ink)}
+.opt{display:inline-flex;align-items:center;gap:6px;font-size:13.5px;color:var(--muted);cursor:pointer;user-select:none}
+.opt input{accent-color:var(--ink);width:14px;height:14px;margin:0}
+
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden;margin-bottom:18px}
+.stat{background:var(--card);padding:11px 14px}
+.stat .k{font-size:12px;color:var(--muted);letter-spacing:.03em}
+.stat .v{font-size:23px;font-weight:600;font-variant-numeric:tabular-nums;line-height:1.25;margin-top:1px}
+
+.note{padding:10px 14px;border-radius:4px;font-size:13.5px;margin-bottom:16px}
+.note.w{background:var(--warn-bg);color:var(--warn)}
+.note.o{background:var(--ok-bg);color:var(--ok)}
+
+.acts{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+button{font-family:var(--sans);font-size:13.5px;padding:7px 15px;border:1px solid var(--rule-strong);border-radius:4px;background:var(--card);color:var(--ink);cursor:pointer}
+button:hover{border-color:var(--ink)}
+button:active{transform:translateY(1px)}
+button:disabled{opacity:.45;cursor:default;transform:none}
+button:disabled:hover{border-color:var(--rule-strong)}
+
+table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;background:var(--card);border:1px solid var(--rule)}
+th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--rule-strong);letter-spacing:.03em}
+td{padding:6px 10px;border-bottom:1px solid var(--rule);font-family:var(--mono);word-break:break-all;vertical-align:top}
+tr:last-child td{border-bottom:none}
+.rn{color:var(--faint);font-variant-numeric:tabular-nums;text-align:right}
+.nil{color:var(--faint);font-style:italic;font-family:var(--sans)}
+.ws{background:var(--warn-bg);color:var(--warn);border-radius:2px}
+.tag{display:inline-block;font-family:var(--sans);font-size:11.5px;padding:1px 7px;border-radius:3px;white-space:nowrap}
+.t-diff{background:var(--diff-bg);color:var(--diff)}
+.t-warn{background:var(--warn-bg);color:var(--warn)}
+.more{font-size:13px;color:var(--muted);margin:10px 0 0}
+.empty{color:var(--faint);font-size:14px;margin:0}
+
+footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--faint)}
+
+@media (max-width:680px){
+  .wrap{padding:20px 14px 48px}
+  .panes{grid-template-columns:1fr}
+  textarea{min-height:130px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <h1>欄位比對工具</h1>
+  <p>從 Excel 複製整欄貼上，即時找出兩欄的差異</p>
+</header>
+
+<div class="panes">
+  <div class="pane">
+    <label for="taA">A 欄<span class="n" id="cntA">0 列</span></label>
+    <textarea id="taA" placeholder="在 Excel 選取整欄後 Ctrl+C，於此 Ctrl+V" spellcheck="false"></textarea>
+  </div>
+  <div class="pane">
+    <label for="taB">B 欄<span class="n" id="cntB">0 列</span></label>
+    <textarea id="taB" placeholder="貼上要對照的另一欄" spellcheck="false"></textarea>
+  </div>
+</div>
+
+<div class="controls">
+  <select id="mode" aria-label="比對方式">
+    <option value="row">逐列比對　同列對照</option>
+    <option value="set">集合比對　找漏掉或多出的值</option>
+  </select>
+  <label class="opt"><input type="checkbox" id="oTrim" checked>忽略前後空白</label>
+  <label class="opt"><input type="checkbox" id="oCase">忽略大小寫</label>
+  <label class="opt"><input type="checkbox" id="oNum">數值等值視為相同</label>
+  <label class="opt"><input type="checkbox" id="oEmpty">忽略空白列</label>
+</div>
+
+<div id="stats" class="stats" hidden></div>
+<div id="notes"></div>
+
+<div class="acts">
+  <button id="bCsv" disabled>下載 CSV</button>
+  <button id="bCopy" disabled>複製到剪貼簿</button>
+  <button id="bDemo">載入範例</button>
+  <button id="bClear">清空</button>
+</div>
+
+<div id="out"><p class="empty">貼上資料後會自動比對。</p></div>
+
+<footer>單機執行，資料只留在這台電腦的瀏覽器裡，不會上傳到任何地方。可直接複製這個檔案給同事使用。</footer>
+
+</div>
+
+<script>
+(function(){
+"use strict";
+var $=function(id){return document.getElementById(id)};
+var ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'};
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return ESC[c]})}
+
+function readOpts(){
+  return {trim:$('oTrim').checked,ci:$('oCase').checked,num:$('oNum').checked,skipEmpty:$('oEmpty').checked};
+}
+
+function parseCol(text,o){
+  var lines=text.split(/\r?\n/).map(function(l){return l.split('\t')[0]});
+  while(lines.length && lines[lines.length-1]===''){lines.pop()}
+  if(o.skipEmpty){lines=lines.filter(function(l){return l.trim()!==''})}
+  return lines;
+}
+
+function norm(v,o){
+  var s=v;
+  if(o.trim){s=s.trim()}
+  if(o.ci){s=s.toLowerCase()}
+  if(o.num && s!==''){
+    var n=Number(s.replace(/,/g,''));
+    if(!isNaN(n)){return '\u0001'+n}
+  }
+  return s;
+}
+
+function classify(a,b){
+  if(a===null){return ['僅 B 有','t-diff']}
+  if(b===null){return ['僅 A 有','t-diff']}
+  if(a.trim()===b.trim()){return ['空白差異','t-warn']}
+  if(a.trim().toLowerCase()===b.trim().toLowerCase()){return ['大小寫差異','t-warn']}
+  var x=Number(a.replace(/,/g,'')),y=Number(b.replace(/,/g,''));
+  if(a.trim()!=='' && b.trim()!=='' && !isNaN(x) && !isNaN(y) && x===y){return ['格式差異','t-warn']}
+  return ['值不同','t-diff'];
+}
+
+function render(v){
+  if(v===null){return '<span class="nil">（無此列）</span>'}
+  if(v===''){return '<span class="nil">（空白）</span>'}
+  var m=v.match(/^(\s*)([\s\S]*?)(\s*)$/);
+  var h='';
+  if(m[1]){h+='<span class="ws">'+'\u2423'.repeat(m[1].length)+'</span>'}
+  h+=esc(m[2]);
+  if(m[3]){h+='<span class="ws">'+'\u2423'.repeat(m[3].length)+'</span>'}
+  return h;
+}
+
+function stat(k,v,tone){
+  return '<div class="stat"><div class="k">'+k+'</div><div class="v"'+(tone?' style="color:var(--'+tone+')"':'')+'>'+v.toLocaleString()+'</div></div>';
+}
+
+var LIMIT=400, rows=[], head=[];
+
+function run(){
+  var o=readOpts();
+  var A=parseCol($('taA').value,o), B=parseCol($('taB').value,o);
+  $('cntA').textContent=A.length.toLocaleString()+' 列';
+  $('cntB').textContent=B.length.toLocaleString()+' 列';
+
+  var notes='';
+  if(($('taA').value+$('taB').value).indexOf('\t')>-1){
+    notes+='<div class="note w">貼上的內容含多欄，已自動只取第一欄。</div>';
+  }
+
+  rows=[];head=[];
+  if(!A.length && !B.length){
+    $('stats').hidden=true;$('notes').innerHTML='';
+    $('out').innerHTML='<p class="empty">貼上資料後會自動比對。</p>';
+    setBtns(false);return;
+  }
+  $('stats').hidden=false;
+
+  if($('mode').value==='row'){
+    var n=Math.max(A.length,B.length), diffs=[], same=0;
+    for(var i=0;i<n;i++){
+      var a=i<A.length?A[i]:null, b=i<B.length?B[i]:null;
+      var na=a===null?'\u0002':norm(a,o), nb=b===null?'\u0003':norm(b,o);
+      if(na===nb){same++}else{diffs.push([i+1,a,b])}
+    }
+    $('stats').innerHTML=stat('總列數',n)+stat('相同',same,'ok')+stat('差異',diffs.length,diffs.length?'diff':'')+stat('列數差',Math.abs(A.length-B.length),A.length!==B.length?'warn':'');
+    $('notes').innerHTML=notes;
+
+    if(!diffs.length){
+      $('out').innerHTML='<div class="note o">兩欄逐列完全相同。</div>';
+      setBtns(false);return;
+    }
+    head=['列','A','B','差異類型'];
+    var h='<table><colgroup><col style="width:56px"><col><col><col style="width:96px"></colgroup><thead><tr><th style="text-align:right">列</th><th>A</th><th>B</th><th>差異類型</th></tr></thead><tbody>';
+    for(var j=0;j<diffs.length;j++){
+      var d=diffs[j], k=classify(d[1],d[2]);
+      rows.push([d[0], d[1]===null?'':d[1], d[2]===null?'':d[2], k[0]]);
+      if(j<LIMIT){
+        h+='<tr><td class="rn">'+d[0]+'</td><td>'+render(d[1])+'</td><td>'+render(d[2])+'</td><td><span class="tag '+k[1]+'">'+k[0]+'</span></td></tr>';
+      }
+    }
+    h+='</tbody></table>';
+    if(diffs.length>LIMIT){h+='<p class="more">畫面只列出前 '+LIMIT+' 筆，下載 CSV 可取得全部 '+diffs.length.toLocaleString()+' 筆。</p>'}
+    $('out').innerHTML=h;
+
+  }else{
+    var mA={},mB={};
+    A.forEach(function(v){var k=norm(v,o);if(!mA[k]){mA[k]={c:0,v:v}}mA[k].c++});
+    B.forEach(function(v){var k=norm(v,o);if(!mB[k]){mB[k]={c:0,v:v}}mB[k].c++});
+    var onlyA=[],onlyB=[],both=0;
+    Object.keys(mA).forEach(function(k){if(mB[k]){both++}else{onlyA.push(mA[k])}});
+    Object.keys(mB).forEach(function(k){if(!mA[k]){onlyB.push(mB[k])}});
+    var dupA=A.length-Object.keys(mA).length, dupB=B.length-Object.keys(mB).length;
+
+    $('stats').innerHTML=stat('A 相異值',Object.keys(mA).length)+stat('B 相異值',Object.keys(mB).length)+stat('共同',both,'ok')+stat('僅 A 有',onlyA.length,onlyA.length?'diff':'')+stat('僅 B 有',onlyB.length,onlyB.length?'diff':'');
+    if(dupA||dupB){notes+='<div class="note w">A 欄有 '+dupA.toLocaleString()+' 筆重複、B 欄有 '+dupB.toLocaleString()+' 筆重複。</div>'}
+    $('notes').innerHTML=notes;
+
+    if(!onlyA.length && !onlyB.length){
+      $('out').innerHTML='<div class="note o">兩欄的值集合完全一致。</div>';
+      setBtns(false);return;
+    }
+    head=['僅 A 有','A 筆數','僅 B 有','B 筆數'];
+    var mx=Math.max(onlyA.length,onlyB.length);
+    var h2='<table><colgroup><col style="width:52px"><col><col></colgroup><thead><tr><th style="text-align:right">#</th><th>僅 A 有（'+onlyA.length.toLocaleString()+'）</th><th>僅 B 有（'+onlyB.length.toLocaleString()+'）</th></tr></thead><tbody>';
+    for(var m=0;m<mx;m++){
+      var ra=m<onlyA.length?onlyA[m]:null, rb=m<onlyB.length?onlyB[m]:null;
+      rows.push([ra?ra.v:'', ra?ra.c:'', rb?rb.v:'', rb?rb.c:'']);
+      if(m<LIMIT){
+        h2+='<tr><td class="rn">'+(m+1)+'</td><td>'+(ra?render(ra.v)+(ra.c>1?' <span class="nil">×'+ra.c+'</span>':''):'')+'</td><td>'+(rb?render(rb.v)+(rb.c>1?' <span class="nil">×'+rb.c+'</span>':''):'')+'</td></tr>';
+      }
+    }
+    h2+='</tbody></table>';
+    if(mx>LIMIT){h2+='<p class="more">畫面只列出前 '+LIMIT+' 筆，下載 CSV 可取得全部。</p>'}
+    $('out').innerHTML=h2;
+  }
+  setBtns(true);
+}
+
+function setBtns(on){$('bCsv').disabled=!on;$('bCopy').disabled=!on}
+
+function cell(v){
+  var s=String(v);
+  return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
+}
+function toCsv(){
+  var out=head.map(cell).join(',')+'\r\n';
+  for(var i=0;i<rows.length;i++){out+=rows[i].map(cell).join(',')+'\r\n'}
+  return out;
+}
+function toTsv(){
+  var out=head.join('\t')+'\n';
+  for(var i=0;i<rows.length;i++){out+=rows[i].join('\t')+'\n'}
+  return out;
+}
+
+$('bCsv').addEventListener('click',function(){
+  var blob=new Blob(['\uFEFF'+toCsv()],{type:'text/csv;charset=utf-8'});
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='欄位比對結果.csv';
+  document.body.appendChild(a);a.click();
+  setTimeout(function(){URL.revokeObjectURL(a.href);document.body.removeChild(a)},0);
+});
+
+$('bCopy').addEventListener('click',function(){
+  var t=document.createElement('textarea');
+  t.value=toTsv();
+  t.style.position='fixed';t.style.opacity='0';
+  document.body.appendChild(t);t.select();
+  try{document.execCommand('copy')}catch(e){}
+  document.body.removeChild(t);
+  var b=$('bCopy'),old=b.textContent;
+  b.textContent='已複製';
+  setTimeout(function(){b.textContent=old},1400);
+});
+
+$('bDemo').addEventListener('click',function(){
+  $('taA').value='A2401001\nA2401002\nA2401003\nA2401004\nA2401005\nA2401006';
+  $('taB').value='A2401001\nA2401002 \nA2401003\na2401004\nA2401007\nA2401006';
+  $('mode').value='row';
+  run();
+});
+
+$('bClear').addEventListener('click',function(){
+  $('taA').value='';$('taB').value='';run();$('taA').focus();
+});
+
+['taA','taB'].forEach(function(id){$(id).addEventListener('input',run)});
+['mode','oTrim','oCase','oNum','oEmpty'].forEach(function(id){$(id).addEventListener('change',run)});
+
+run();
+})();
+</script>
+</body>
+</html>
