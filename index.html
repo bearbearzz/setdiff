@@ -24,14 +24,15 @@
   }
 }
 *{box-sizing:border-box}
+[hidden]{display:none !important}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
-.wrap{max-width:1080px;margin:0 auto;padding:32px 24px 64px}
+.wrap{max-width:1180px;margin:0 auto;padding:32px 24px 64px}
 
 header{border-bottom:1px solid var(--rule-strong);padding-bottom:14px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
 h1{font-size:19px;font-weight:600;margin:0;letter-spacing:.02em}
 header p{margin:0;font-size:13px;color:var(--muted)}
 
-.panes{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:18px}
+.panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:18px}
 .pane label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-size:13px;font-weight:600}
 .pane .n{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums}
 textarea{width:100%;min-height:170px;padding:10px 12px;border:1px solid var(--rule-strong);border-radius:4px;background:var(--card);color:var(--ink);font-family:var(--mono);font-size:12.5px;line-height:1.55;resize:vertical}
@@ -51,19 +52,28 @@ select{font-family:var(--sans);font-size:13.5px;padding:6px 10px;border:1px soli
 .note{padding:10px 14px;border-radius:4px;font-size:13.5px;margin-bottom:16px}
 .note.w{background:var(--warn-bg);color:var(--warn)}
 .note.o{background:var(--ok-bg);color:var(--ok)}
+.sec .note{margin-bottom:0}
 
-.acts{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap}
+.acts{display:flex;gap:8px;margin-bottom:24px;flex-wrap:wrap}
 button{font-family:var(--sans);font-size:13.5px;padding:7px 15px;border:1px solid var(--rule-strong);border-radius:4px;background:var(--card);color:var(--ink);cursor:pointer}
 button:hover{border-color:var(--ink)}
 button:active{transform:translateY(1px)}
 button:disabled{opacity:.45;cursor:default;transform:none}
 button:disabled:hover{border-color:var(--rule-strong)}
+button.sm{font-size:12.5px;padding:5px 11px}
+
+.split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
+.sec{min-width:0}
+.sec-h{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.sec-h h2{font-size:15px;font-weight:600;margin:0}
+.sec-h .cnt{font-weight:400;color:var(--muted);font-variant-numeric:tabular-nums;margin-left:6px}
 
 table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;background:var(--card);border:1px solid var(--rule)}
 th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--rule-strong);letter-spacing:.03em}
 td{padding:6px 10px;border-bottom:1px solid var(--rule);font-family:var(--mono);word-break:break-all;vertical-align:top}
 tr:last-child td{border-bottom:none}
 .rn{color:var(--faint);font-variant-numeric:tabular-nums;text-align:right}
+.num{font-variant-numeric:tabular-nums;text-align:right;color:var(--muted)}
 .nil{color:var(--faint);font-style:italic;font-family:var(--sans)}
 .ws{background:var(--warn-bg);color:var(--warn);border-radius:2px}
 .tag{display:inline-block;font-family:var(--sans);font-size:11.5px;padding:1px 7px;border-radius:3px;white-space:nowrap}
@@ -74,9 +84,12 @@ tr:last-child td{border-bottom:none}
 
 footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-size:12.5px;color:var(--faint)}
 
+@media (max-width:820px){
+  .split{grid-template-columns:minmax(0,1fr);gap:28px}
+}
 @media (max-width:680px){
   .wrap{padding:20px 14px 48px}
-  .panes{grid-template-columns:1fr}
+  .panes{grid-template-columns:minmax(0,1fr)}
   textarea{min-height:130px}
 }
 </style>
@@ -102,8 +115,8 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-si
 
 <div class="controls">
   <select id="mode" aria-label="比對方式">
+    <option value="set" selected>集合比對　順序不影響</option>
     <option value="row">逐列比對　同列對照</option>
-    <option value="set">集合比對　找漏掉或多出的值</option>
   </select>
   <label class="opt"><input type="checkbox" id="oTrim" checked>忽略前後空白</label>
   <label class="opt"><input type="checkbox" id="oCase">忽略大小寫</label>
@@ -115,7 +128,7 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-si
 <div id="notes"></div>
 
 <div class="acts">
-  <button id="bCsv" disabled>下載 CSV</button>
+  <button id="bAll" data-dl="all" disabled>下載全部 CSV</button>
   <button id="bCopy" disabled>複製到剪貼簿</button>
   <button id="bDemo">載入範例</button>
   <button id="bClear">清空</button>
@@ -123,7 +136,7 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-si
 
 <div id="out"><p class="empty">貼上資料後會自動比對。</p></div>
 
-<footer>單機執行，資料只留在這台電腦的瀏覽器裡，不會上傳到任何地方。可直接複製這個檔案給同事使用。</footer>
+<footer>單機執行，資料只留在這台電腦的瀏覽器裡，不會上傳到任何地方。可直接複製這個檔案給同事使用。　v2026.08.07b</footer>
 
 </div>
 
@@ -133,6 +146,10 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-si
 var $=function(id){return document.getElementById(id)};
 var ESC={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'};
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return ESC[c]})}
+function num(n){return n.toLocaleString()}
+
+var LIMIT=400;
+var DS={};
 
 function readOpts(){
   return {trim:$('oTrim').checked,ci:$('oCase').checked,num:$('oNum').checked,skipEmpty:$('oEmpty').checked};
@@ -178,58 +195,55 @@ function render(v){
 }
 
 function stat(k,v,tone){
-  return '<div class="stat"><div class="k">'+k+'</div><div class="v"'+(tone?' style="color:var(--'+tone+')"':'')+'>'+v.toLocaleString()+'</div></div>';
+  return '<div class="stat"><div class="k">'+k+'</div><div class="v"'+(tone?' style="color:var(--'+tone+')"':'')+'>'+num(v)+'</div></div>';
 }
 
-var LIMIT=400, rows=[], head=[];
+function secHead(title,count,key,disabled){
+  return '<div class="sec-h"><h2>'+title+'<span class="cnt">'+num(count)+' 筆</span></h2>'+
+         '<button class="sm" data-dl="'+key+'"'+(disabled?' disabled':'')+'>下載 CSV</button></div>';
+}
+
+function valueTable(list){
+  var h='<table><colgroup><col style="width:44px"><col><col style="width:62px"></colgroup>'+
+        '<thead><tr><th style="text-align:right">#</th><th>值</th><th style="text-align:right">筆數</th></tr></thead><tbody>';
+  var lim=Math.min(list.length,LIMIT);
+  for(var i=0;i<lim;i++){
+    h+='<tr><td class="rn">'+(i+1)+'</td><td>'+render(list[i].v)+'</td><td class="num">'+list[i].c+'</td></tr>';
+  }
+  h+='</tbody></table>';
+  if(list.length>LIMIT){h+='<p class="more">畫面只列出前 '+LIMIT+' 筆，下載 CSV 可取得全部 '+num(list.length)+' 筆。</p>'}
+  return h;
+}
+
+function reset(){
+  DS={};
+  $('stats').hidden=true;
+  $('stats').innerHTML='';
+  $('notes').innerHTML='';
+  $('out').innerHTML='<p class="empty">貼上資料後會自動比對。</p>';
+  sync();
+}
 
 function run(){
   var o=readOpts();
   var A=parseCol($('taA').value,o), B=parseCol($('taB').value,o);
-  $('cntA').textContent=A.length.toLocaleString()+' 列';
-  $('cntB').textContent=B.length.toLocaleString()+' 列';
+  $('cntA').textContent=num(A.length)+' 列';
+  $('cntB').textContent=num(B.length)+' 列';
+
+  var isSet=$('mode').value==='set';
+  $('bAll').textContent=isSet?'下載全部 CSV':'下載 CSV';
+
+  if(!A.length && !B.length){reset();return}
 
   var notes='';
   if(($('taA').value+$('taB').value).indexOf('\t')>-1){
     notes+='<div class="note w">貼上的內容含多欄，已自動只取第一欄。</div>';
   }
 
-  rows=[];head=[];
-  if(!A.length && !B.length){
-    $('stats').hidden=true;$('notes').innerHTML='';
-    $('out').innerHTML='<p class="empty">貼上資料後會自動比對。</p>';
-    setBtns(false);return;
-  }
+  DS={};
   $('stats').hidden=false;
 
-  if($('mode').value==='row'){
-    var n=Math.max(A.length,B.length), diffs=[], same=0;
-    for(var i=0;i<n;i++){
-      var a=i<A.length?A[i]:null, b=i<B.length?B[i]:null;
-      var na=a===null?'\u0002':norm(a,o), nb=b===null?'\u0003':norm(b,o);
-      if(na===nb){same++}else{diffs.push([i+1,a,b])}
-    }
-    $('stats').innerHTML=stat('總列數',n)+stat('相同',same,'ok')+stat('差異',diffs.length,diffs.length?'diff':'')+stat('列數差',Math.abs(A.length-B.length),A.length!==B.length?'warn':'');
-    $('notes').innerHTML=notes;
-
-    if(!diffs.length){
-      $('out').innerHTML='<div class="note o">兩欄逐列完全相同。</div>';
-      setBtns(false);return;
-    }
-    head=['列','A','B','差異類型'];
-    var h='<table><colgroup><col style="width:56px"><col><col><col style="width:96px"></colgroup><thead><tr><th style="text-align:right">列</th><th>A</th><th>B</th><th>差異類型</th></tr></thead><tbody>';
-    for(var j=0;j<diffs.length;j++){
-      var d=diffs[j], k=classify(d[1],d[2]);
-      rows.push([d[0], d[1]===null?'':d[1], d[2]===null?'':d[2], k[0]]);
-      if(j<LIMIT){
-        h+='<tr><td class="rn">'+d[0]+'</td><td>'+render(d[1])+'</td><td>'+render(d[2])+'</td><td><span class="tag '+k[1]+'">'+k[0]+'</span></td></tr>';
-      }
-    }
-    h+='</tbody></table>';
-    if(diffs.length>LIMIT){h+='<p class="more">畫面只列出前 '+LIMIT+' 筆，下載 CSV 可取得全部 '+diffs.length.toLocaleString()+' 筆。</p>'}
-    $('out').innerHTML=h;
-
-  }else{
+  if(isSet){
     var mA={},mB={};
     A.forEach(function(v){var k=norm(v,o);if(!mA[k]){mA[k]={c:0,v:v}}mA[k].c++});
     B.forEach(function(v){var k=norm(v,o);if(!mB[k]){mB[k]={c:0,v:v}}mB[k].c++});
@@ -238,78 +252,122 @@ function run(){
     Object.keys(mB).forEach(function(k){if(!mA[k]){onlyB.push(mB[k])}});
     var dupA=A.length-Object.keys(mA).length, dupB=B.length-Object.keys(mB).length;
 
-    $('stats').innerHTML=stat('A 相異值',Object.keys(mA).length)+stat('B 相異值',Object.keys(mB).length)+stat('共同',both,'ok')+stat('僅 A 有',onlyA.length,onlyA.length?'diff':'')+stat('僅 B 有',onlyB.length,onlyB.length?'diff':'');
-    if(dupA||dupB){notes+='<div class="note w">A 欄有 '+dupA.toLocaleString()+' 筆重複、B 欄有 '+dupB.toLocaleString()+' 筆重複。</div>'}
+    $('stats').innerHTML=stat('A 相異值',Object.keys(mA).length)+stat('B 相異值',Object.keys(mB).length)+
+      stat('共同',both,'ok')+stat('僅 A 有',onlyA.length,onlyA.length?'diff':'')+stat('僅 B 有',onlyB.length,onlyB.length?'diff':'');
+    if(dupA||dupB){notes+='<div class="note w">A 欄有 '+num(dupA)+' 筆重複、B 欄有 '+num(dupB)+' 筆重複。</div>'}
     $('notes').innerHTML=notes;
+
+    DS.onlyA={name:'僅A有',head:['值','筆數'],rows:onlyA.map(function(r){return [r.v,r.c]})};
+    DS.onlyB={name:'僅B有',head:['值','筆數'],rows:onlyB.map(function(r){return [r.v,r.c]})};
+    DS.all={name:'欄位比對結果',head:['來源','值','筆數'],
+      rows:onlyA.map(function(r){return ['僅A有',r.v,r.c]}).concat(onlyB.map(function(r){return ['僅B有',r.v,r.c]}))};
 
     if(!onlyA.length && !onlyB.length){
       $('out').innerHTML='<div class="note o">兩欄的值集合完全一致。</div>';
-      setBtns(false);return;
+      DS={};sync();return;
     }
-    head=['僅 A 有','A 筆數','僅 B 有','B 筆數'];
-    var mx=Math.max(onlyA.length,onlyB.length);
-    var h2='<table><colgroup><col style="width:52px"><col><col></colgroup><thead><tr><th style="text-align:right">#</th><th>僅 A 有（'+onlyA.length.toLocaleString()+'）</th><th>僅 B 有（'+onlyB.length.toLocaleString()+'）</th></tr></thead><tbody>';
-    for(var m=0;m<mx;m++){
-      var ra=m<onlyA.length?onlyA[m]:null, rb=m<onlyB.length?onlyB[m]:null;
-      rows.push([ra?ra.v:'', ra?ra.c:'', rb?rb.v:'', rb?rb.c:'']);
-      if(m<LIMIT){
-        h2+='<tr><td class="rn">'+(m+1)+'</td><td>'+(ra?render(ra.v)+(ra.c>1?' <span class="nil">×'+ra.c+'</span>':''):'')+'</td><td>'+(rb?render(rb.v)+(rb.c>1?' <span class="nil">×'+rb.c+'</span>':''):'')+'</td></tr>';
-      }
+
+    var h='<div class="split">';
+    h+='<div class="sec">'+secHead('僅 A 有',onlyA.length,'onlyA',!onlyA.length);
+    h+= onlyA.length ? valueTable(onlyA) : '<div class="note o">沒有只出現在 A 的值。</div>';
+    h+='</div>';
+    h+='<div class="sec">'+secHead('僅 B 有',onlyB.length,'onlyB',!onlyB.length);
+    h+= onlyB.length ? valueTable(onlyB) : '<div class="note o">沒有只出現在 B 的值。</div>';
+    h+='</div></div>';
+    $('out').innerHTML=h;
+
+  }else{
+    var n=Math.max(A.length,B.length), diffs=[], same=0;
+    for(var i=0;i<n;i++){
+      var a=i<A.length?A[i]:null, b=i<B.length?B[i]:null;
+      var na=a===null?'\u0002':norm(a,o), nb=b===null?'\u0003':norm(b,o);
+      if(na===nb){same++}else{diffs.push([i+1,a,b])}
+    }
+    $('stats').innerHTML=stat('總列數',n)+stat('相同',same,'ok')+
+      stat('差異',diffs.length,diffs.length?'diff':'')+stat('列數差',Math.abs(A.length-B.length),A.length!==B.length?'warn':'');
+    $('notes').innerHTML=notes;
+
+    if(!diffs.length){
+      $('out').innerHTML='<div class="note o">兩欄逐列完全相同。</div>';
+      sync();return;
+    }
+    DS.all={name:'逐列差異',head:['列','A','B','差異類型'],
+      rows:diffs.map(function(d){return [d[0], d[1]===null?'':d[1], d[2]===null?'':d[2], classify(d[1],d[2])[0]]})};
+
+    var h2='<div class="sec">'+secHead('逐列差異',diffs.length,'all',false);
+    h2+='<table><colgroup><col style="width:56px"><col><col><col style="width:96px"></colgroup>'+
+        '<thead><tr><th style="text-align:right">列</th><th>A</th><th>B</th><th>差異類型</th></tr></thead><tbody>';
+    var lim=Math.min(diffs.length,LIMIT);
+    for(var j=0;j<lim;j++){
+      var d=diffs[j], k=classify(d[1],d[2]);
+      h2+='<tr><td class="rn">'+d[0]+'</td><td>'+render(d[1])+'</td><td>'+render(d[2])+'</td><td><span class="tag '+k[1]+'">'+k[0]+'</span></td></tr>';
     }
     h2+='</tbody></table>';
-    if(mx>LIMIT){h2+='<p class="more">畫面只列出前 '+LIMIT+' 筆，下載 CSV 可取得全部。</p>'}
+    if(diffs.length>LIMIT){h2+='<p class="more">畫面只列出前 '+LIMIT+' 筆，下載 CSV 可取得全部 '+num(diffs.length)+' 筆。</p>'}
+    h2+='</div>';
     $('out').innerHTML=h2;
   }
-  setBtns(true);
+  sync();
 }
 
-function setBtns(on){$('bCsv').disabled=!on;$('bCopy').disabled=!on}
+function sync(){
+  var on=!!(DS.all && DS.all.rows.length);
+  $('bAll').disabled=!on;
+  $('bCopy').disabled=!on;
+}
 
 function cell(v){
   var s=String(v);
   return /[",\r\n]/.test(s) ? '"'+s.replace(/"/g,'""')+'"' : s;
 }
-function toCsv(){
-  var out=head.map(cell).join(',')+'\r\n';
-  for(var i=0;i<rows.length;i++){out+=rows[i].map(cell).join(',')+'\r\n'}
+function toCsv(d){
+  var out=d.head.map(cell).join(',')+'\r\n';
+  for(var i=0;i<d.rows.length;i++){out+=d.rows[i].map(cell).join(',')+'\r\n'}
   return out;
 }
-function toTsv(){
-  var out=head.join('\t')+'\n';
-  for(var i=0;i<rows.length;i++){out+=rows[i].join('\t')+'\n'}
-  return out;
-}
-
-$('bCsv').addEventListener('click',function(){
-  var blob=new Blob(['\uFEFF'+toCsv()],{type:'text/csv;charset=utf-8'});
+function download(key){
+  var d=DS[key];
+  if(!d || !d.rows.length){return}
+  var blob=new Blob(['\uFEFF'+toCsv(d)],{type:'text/csv;charset=utf-8'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download='欄位比對結果.csv';
+  a.download=d.name+'.csv';
   document.body.appendChild(a);a.click();
   setTimeout(function(){URL.revokeObjectURL(a.href);document.body.removeChild(a)},0);
+}
+
+document.addEventListener('click',function(e){
+  var b=e.target.closest('[data-dl]');
+  if(b && !b.disabled){download(b.getAttribute('data-dl'))}
 });
 
 $('bCopy').addEventListener('click',function(){
+  var d=DS.all;
+  if(!d){return}
+  var out=d.head.join('\t')+'\n';
+  for(var i=0;i<d.rows.length;i++){out+=d.rows[i].join('\t')+'\n'}
   var t=document.createElement('textarea');
-  t.value=toTsv();
-  t.style.position='fixed';t.style.opacity='0';
+  t.value=out;t.style.position='fixed';t.style.opacity='0';
   document.body.appendChild(t);t.select();
-  try{document.execCommand('copy')}catch(e){}
+  try{document.execCommand('copy')}catch(err){}
   document.body.removeChild(t);
-  var b=$('bCopy'),old=b.textContent;
+  var b=$('bCopy');
   b.textContent='已複製';
-  setTimeout(function(){b.textContent=old},1400);
+  setTimeout(function(){b.textContent='複製到剪貼簿'},1400);
 });
 
 $('bDemo').addEventListener('click',function(){
   $('taA').value='A2401001\nA2401002\nA2401003\nA2401004\nA2401005\nA2401006';
-  $('taB').value='A2401001\nA2401002 \nA2401003\na2401004\nA2401007\nA2401006';
-  $('mode').value='row';
+  $('taB').value='A2401006\nA2401002 \nA2401001\na2401004\nA2401007\nA2401003';
+  $('mode').value='set';
   run();
 });
 
 $('bClear').addEventListener('click',function(){
-  $('taA').value='';$('taB').value='';run();$('taA').focus();
+  if(!$('taA').value && !$('taB').value){return}
+  if(!confirm('確定要清空 A、B 兩欄的資料嗎？此動作無法復原。')){return}
+  $('taA').value='';$('taB').value='';
+  run();$('taA').focus();
 });
 
 ['taA','taB'].forEach(function(id){$(id).addEventListener('input',run)});
