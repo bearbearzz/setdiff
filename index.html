@@ -61,6 +61,8 @@ button:active{transform:translateY(1px)}
 button:disabled{opacity:.45;cursor:default;transform:none}
 button:disabled:hover{border-color:var(--rule-strong)}
 button.sm{font-size:12.5px;padding:5px 11px}
+button.cp{font-size:12px;padding:2px 9px;line-height:1.5;white-space:nowrap}
+button.cp.done{color:var(--ok);border-color:var(--ok);background:var(--ok-bg)}
 
 .split{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:20px;align-items:start}
 .sec{min-width:0}
@@ -71,6 +73,7 @@ button.sm{font-size:12.5px;padding:5px 11px}
 table{width:100%;border-collapse:collapse;font-size:12.5px;table-layout:fixed;background:var(--card);border:1px solid var(--rule)}
 th{text-align:left;font-size:12px;font-weight:600;color:var(--muted);padding:8px 10px;border-bottom:1px solid var(--rule-strong);letter-spacing:.03em}
 td{padding:6px 10px;border-bottom:1px solid var(--rule);font-family:var(--mono);word-break:break-all;vertical-align:top}
+td.act{padding:4px 8px;text-align:center;font-family:var(--sans);vertical-align:middle}
 tr:last-child td{border-bottom:none}
 .rn{color:var(--faint);font-variant-numeric:tabular-nums;text-align:right}
 .num{font-variant-numeric:tabular-nums;text-align:right;color:var(--muted)}
@@ -136,7 +139,7 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-si
 
 <div id="out"><p class="empty">貼上資料後會自動比對。</p></div>
 
-<footer>單機執行，資料只留在這台電腦的瀏覽器裡，不會上傳到任何地方。可直接複製這個檔案給同事使用。　v2026.08.07b</footer>
+<footer>單機執行，資料只留在這台電腦的瀏覽器裡，不會上傳到任何地方。可直接複製這個檔案給同事使用。　v2026.10.14</footer>
 
 </div>
 
@@ -188,9 +191,9 @@ function render(v){
   if(v===''){return '<span class="nil">（空白）</span>'}
   var m=v.match(/^(\s*)([\s\S]*?)(\s*)$/);
   var h='';
-  if(m[1]){h+='<span class="ws">'+'\u2423'.repeat(m[1].length)+'</span>'}
+  if(m[1]){h+='<span class="ws">'+'␣'.repeat(m[1].length)+'</span>'}
   h+=esc(m[2]);
-  if(m[3]){h+='<span class="ws">'+'\u2423'.repeat(m[3].length)+'</span>'}
+  if(m[3]){h+='<span class="ws">'+'␣'.repeat(m[3].length)+'</span>'}
   return h;
 }
 
@@ -203,12 +206,13 @@ function secHead(title,count,key,disabled){
          '<button class="sm" data-dl="'+key+'"'+(disabled?' disabled':'')+'>下載 CSV</button></div>';
 }
 
-function valueTable(list){
-  var h='<table><colgroup><col style="width:44px"><col><col style="width:62px"></colgroup>'+
-        '<thead><tr><th style="text-align:right">#</th><th>值</th><th style="text-align:right">筆數</th></tr></thead><tbody>';
+function valueTable(list,key){
+  var h='<table><colgroup><col style="width:44px"><col><col style="width:62px"><col style="width:72px"></colgroup>'+
+        '<thead><tr><th style="text-align:right">#</th><th>值</th><th style="text-align:right">筆數</th><th style="text-align:center">複製</th></tr></thead><tbody>';
   var lim=Math.min(list.length,LIMIT);
   for(var i=0;i<lim;i++){
-    h+='<tr><td class="rn">'+(i+1)+'</td><td>'+render(list[i].v)+'</td><td class="num">'+list[i].c+'</td></tr>';
+    h+='<tr><td class="rn">'+(i+1)+'</td><td>'+render(list[i].v)+'</td><td class="num">'+list[i].c+'</td>'+
+       '<td class="act"><button class="cp" data-cp="'+key+'" data-i="'+i+'" title="複製這個值">複製</button></td></tr>';
   }
   h+='</tbody></table>';
   if(list.length>LIMIT){h+='<p class="more">畫面只列出前 '+LIMIT+' 筆，下載 CSV 可取得全部 '+num(list.length)+' 筆。</p>'}
@@ -269,10 +273,10 @@ function run(){
 
     var h='<div class="split">';
     h+='<div class="sec">'+secHead('僅 A 有',onlyA.length,'onlyA',!onlyA.length);
-    h+= onlyA.length ? valueTable(onlyA) : '<div class="note o">沒有只出現在 A 的值。</div>';
+    h+= onlyA.length ? valueTable(onlyA,'onlyA') : '<div class="note o">沒有只出現在 A 的值。</div>';
     h+='</div>';
     h+='<div class="sec">'+secHead('僅 B 有',onlyB.length,'onlyB',!onlyB.length);
-    h+= onlyB.length ? valueTable(onlyB) : '<div class="note o">沒有只出現在 B 的值。</div>';
+    h+= onlyB.length ? valueTable(onlyB,'onlyB') : '<div class="note o">沒有只出現在 B 的值。</div>';
     h+='</div></div>';
     $('out').innerHTML=h;
 
@@ -328,7 +332,7 @@ function toCsv(d){
 function download(key){
   var d=DS[key];
   if(!d || !d.rows.length){return}
-  var blob=new Blob(['\uFEFF'+toCsv(d)],{type:'text/csv;charset=utf-8'});
+  var blob=new Blob(['﻿'+toCsv(d)],{type:'text/csv;charset=utf-8'});
   var a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
   a.download=d.name+'.csv';
@@ -336,7 +340,31 @@ function download(key){
   setTimeout(function(){URL.revokeObjectURL(a.href);document.body.removeChild(a)},0);
 }
 
+function fallbackCopy(text){
+  var t=document.createElement('textarea');
+  t.value=text;t.style.position='fixed';t.style.opacity='0';
+  document.body.appendChild(t);t.select();
+  try{document.execCommand('copy')}catch(err){}
+  document.body.removeChild(t);
+}
+function copyText(text,done){
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(done,function(){fallbackCopy(text);done()});
+  }else{fallbackCopy(text);done()}
+}
+function flash(b,on,off){
+  b.textContent=on;b.classList.add('done');
+  clearTimeout(b._t);
+  b._t=setTimeout(function(){b.textContent=off;b.classList.remove('done')},1400);
+}
+
 document.addEventListener('click',function(e){
+  var c=e.target.closest('[data-cp]');
+  if(c){
+    var d=DS[c.getAttribute('data-cp')], row=d && d.rows[+c.getAttribute('data-i')];
+    if(row){copyText(String(row[0]),function(){flash(c,'已複製','複製')})}
+    return;
+  }
   var b=e.target.closest('[data-dl]');
   if(b && !b.disabled){download(b.getAttribute('data-dl'))}
 });
@@ -346,14 +374,8 @@ $('bCopy').addEventListener('click',function(){
   if(!d){return}
   var out=d.head.join('\t')+'\n';
   for(var i=0;i<d.rows.length;i++){out+=d.rows[i].join('\t')+'\n'}
-  var t=document.createElement('textarea');
-  t.value=out;t.style.position='fixed';t.style.opacity='0';
-  document.body.appendChild(t);t.select();
-  try{document.execCommand('copy')}catch(err){}
-  document.body.removeChild(t);
   var b=$('bCopy');
-  b.textContent='已複製';
-  setTimeout(function(){b.textContent='複製到剪貼簿'},1400);
+  copyText(out,function(){flash(b,'已複製','複製到剪貼簿')});
 });
 
 $('bDemo').addEventListener('click',function(){
