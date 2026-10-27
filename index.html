@@ -13,24 +13,42 @@
   --warn:#8A6109; --warn-bg:#F6EDD8;
   --mono:"Cascadia Mono",Consolas,"SF Mono",Menlo,"Noto Sans Mono",monospace;
   --sans:"PingFang TC","Microsoft JhengHei","Noto Sans TC","Hiragino Sans",-apple-system,"Segoe UI",sans-serif;
+  color-scheme:light;
 }
 @media (prefers-color-scheme:dark){
-  :root{
+  :root:not([data-theme="light"]){
     --paper:#16191A; --card:#1E2223; --ink:#E8EBE9; --muted:#9BA2A0; --faint:#7A817F;
     --rule:#2E3435; --rule-strong:#414849;
     --diff:#E4837A; --diff-bg:#33211F;
     --ok:#7FBF9B; --ok-bg:#1B2A22;
     --warn:#D7AC55; --warn-bg:#2C2416;
+    color-scheme:dark;
   }
+}
+:root[data-theme="dark"]{
+  --paper:#16191A; --card:#1E2223; --ink:#E8EBE9; --muted:#9BA2A0; --faint:#7A817F;
+  --rule:#2E3435; --rule-strong:#414849;
+  --diff:#E4837A; --diff-bg:#33211F;
+  --ok:#7FBF9B; --ok-bg:#1B2A22;
+  --warn:#D7AC55; --warn-bg:#2C2416;
+  color-scheme:dark;
 }
 *{box-sizing:border-box}
 [hidden]{display:none !important}
 body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.6;-webkit-font-smoothing:antialiased}
 .wrap{max-width:1180px;margin:0 auto;padding:32px 24px 64px}
 
-header{border-bottom:1px solid var(--rule-strong);padding-bottom:14px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:baseline;gap:16px;flex-wrap:wrap}
+header{border-bottom:1px solid var(--rule-strong);padding-bottom:14px;margin-bottom:24px;display:flex;justify-content:space-between;align-items:center;gap:12px 16px;flex-wrap:wrap}
+.hd{display:flex;align-items:baseline;gap:6px 16px;flex-wrap:wrap}
 h1{font-size:19px;font-weight:600;margin:0;letter-spacing:.02em}
 header p{margin:0;font-size:13px;color:var(--muted)}
+
+.seg{display:inline-flex;border:1px solid var(--rule-strong);border-radius:4px;overflow:hidden;background:var(--card)}
+.seg button{border:none;border-radius:0;padding:4px 12px;font-size:12.5px;color:var(--muted);background:transparent}
+.seg button+button{border-left:1px solid var(--rule-strong)}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.seg button:focus-visible{outline-offset:-2px}
 
 .panes{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:16px;margin-bottom:18px}
 .pane label{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px;font-size:13px;font-weight:600}
@@ -96,13 +114,23 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-si
   textarea{min-height:130px}
 }
 </style>
+<script>
+try{var t=localStorage.getItem('colcmp-theme');if(t==='light'||t==='dark'){document.documentElement.setAttribute('data-theme',t)}}catch(e){}
+</script>
 </head>
 <body>
 <div class="wrap">
 
 <header>
-  <h1>欄位比對工具</h1>
-  <p>從 Excel 複製整欄貼上，即時找出兩欄的差異</p>
+  <div class="hd">
+    <h1>欄位比對工具</h1>
+    <p>從 Excel 複製整欄貼上，即時找出兩欄的差異</p>
+  </div>
+  <div class="seg" id="theme" role="group" aria-label="背景顏色">
+    <button data-theme-v="auto" title="跟隨電腦的淺色／深色設定">自動</button>
+    <button data-theme-v="light">白底</button>
+    <button data-theme-v="dark">黑底</button>
+  </div>
 </header>
 
 <div class="panes">
@@ -139,7 +167,7 @@ footer{margin-top:40px;padding-top:14px;border-top:1px solid var(--rule);font-si
 
 <div id="out"><p class="empty">貼上資料後會自動比對。</p></div>
 
-<footer>單機執行，資料只留在這台電腦的瀏覽器裡，不會上傳到任何地方。可直接複製這個檔案給同事使用。　v2026.10.14</footer>
+<footer>單機執行，資料只留在這台電腦的瀏覽器裡，不會上傳到任何地方。可直接複製這個檔案給同事使用。　v2026.10.27</footer>
 
 </div>
 
@@ -391,6 +419,19 @@ $('bClear').addEventListener('click',function(){
   $('taA').value='';$('taB').value='';
   run();$('taA').focus();
 });
+
+function setTheme(v,save){
+  var root=document.documentElement;
+  if(v==='light'||v==='dark'){root.setAttribute('data-theme',v)}else{v='auto';root.removeAttribute('data-theme')}
+  var bs=$('theme').querySelectorAll('button');
+  for(var i=0;i<bs.length;i++){bs[i].setAttribute('aria-pressed',bs[i].getAttribute('data-theme-v')===v?'true':'false')}
+  if(save){try{localStorage.setItem('colcmp-theme',v)}catch(e){}}
+}
+$('theme').addEventListener('click',function(e){
+  var b=e.target.closest('[data-theme-v]');
+  if(b){setTheme(b.getAttribute('data-theme-v'),true)}
+});
+setTheme(document.documentElement.getAttribute('data-theme')||'auto',false);
 
 ['taA','taB'].forEach(function(id){$(id).addEventListener('input',run)});
 ['mode','oTrim','oCase','oNum','oEmpty'].forEach(function(id){$(id).addEventListener('change',run)});
